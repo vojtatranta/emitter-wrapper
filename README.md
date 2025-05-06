@@ -1,29 +1,101 @@
-# Create T3 App
+# emitter-wrapper
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+**A robust utility for handling event-driven state and callback chains with Node.js EventEmitters.**
 
-## What's next? How do I make an app with this?
+- **TypeScript-first**: Full type safety and typings.
+- **Dual module support**: Works with both CommonJS (`require`) and ESM (`import`).
+- **Runtime state checks**: Wait for, chain, and react to emitter state transitions with ease.
+- **Cleaner event code**: Avoid callback hell and complex event logic.
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+---
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## ✨ Why use emitter-wrapper?
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+`emitter-wrapper` helps you:
 
-## Learn More
+- Chain callbacks and promises based on emitter state.
+- React immediately if an emitter is already in a desired state.
+- Clean up event listeners automatically after state transitions.
+- Use custom matchers for complex state objects.
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+Great for orchestrating async workflows, stateful resources, and any advanced event-driven logic.
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+---
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+## 🚀 Installation
 
-## How do I deploy this?
+```bash
+npm install emitter-wrapper
+```
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+---
+
+## 🛠️ Usage Example
+
+```ts
+import { EmitterWrapper } from "emitter-wrapper";
+import { EventEmitter } from "events";
+
+class MyEmitter extends EventEmitter {
+  private state = "idle";
+  getState() {
+    return this.state;
+  }
+  setState(s: string) {
+    this.state = s;
+    this.emit("stateChange");
+  }
+}
+
+const emitter = new MyEmitter();
+const wrapper = new EmitterWrapper(emitter);
+
+// Wait for the emitter to reach a state, then run a callback
+wrapper.inState("ready", (state) => {
+  console.log("Emitter is ready!", state);
+});
+
+// Or, use a promise-based approach
+await wrapper.promised("ready");
+
+// Change state somewhere else
+emitter.setState("ready");
+```
+
+---
+
+## 🔗 Chaining Example
+
+You can chain state transitions and promises for complex workflows:
+
+```ts
+wrapper
+  .inState("loading", () => {
+    console.log("Loading started");
+  })
+  .inState("ready", () => {
+    console.log("Now ready!");
+  })
+  .promised("done")
+  .then(() => {
+    console.log("Process is done!");
+  });
+
+// ...
+emitter.setState("loading");
+emitter.setState("ready");
+emitter.setState("done");
+```
+
+---
+
+## 📦 Module Support
+
+- **ESM**: `import { EmitterWrapper } from 'emitter-wrapper'`
+- **CommonJS**: `const { EmitterWrapper } = require('emitter-wrapper')`
+
+---
+
+## 📝 License
+
+MIT
