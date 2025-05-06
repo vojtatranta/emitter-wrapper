@@ -64,6 +64,19 @@ emitter.setState("ready");
 
 ---
 
+## ℹ️ Callback Arguments Example
+
+The callback passed to `inState` receives both the new state and the original emitter instance (not the wrapper):
+
+```ts
+wrapper.inState("ready", (state, emitterInstance) => {
+  console.log("State is now:", state);
+  emitterInstance.setState("done"); // you can interact with the emitter here
+});
+```
+
+---
+
 ## 🔗 Chaining Example
 
 You can chain state transitions and promises for complex workflows:

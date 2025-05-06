@@ -107,6 +107,44 @@ describe("EmitterWrapper type behavior", () => {
     expect(callCount).toBe(1);
   });
 
+  it("inState callback receives the original emitter instance as second argument", () => {
+    class MyEmitter extends events.EventEmitter {
+      private _state = "idle";
+      getState() {
+        return this._state;
+      }
+      setState(newState: string) {
+        this._state = newState;
+        this.emit("stateChange");
+      }
+    }
+    const emitter = new MyEmitter();
+    const wrapper = EmitterWrapper.wrap(emitter);
+    let receivedEmitter: any = null;
+    wrapper.inState("idle", (_state, passedEmitter) => {
+      receivedEmitter = passedEmitter;
+    });
+    expect(receivedEmitter).toBe(emitter);
+  });
+
+  it("promised resolves to the original emitter instance", async () => {
+    class MyEmitter extends events.EventEmitter {
+      private _state = "idle";
+      getState() {
+        return this._state;
+      }
+      setState(newState: string) {
+        this._state = newState;
+        this.emit("stateChange");
+      }
+    }
+    const emitter = new MyEmitter();
+    const wrapper = EmitterWrapper.wrap(emitter);
+    setTimeout(() => emitter.setState("ready"), 10);
+    const result = await wrapper.promised("ready");
+    expect(result).toBe(emitter);
+  });
+
   it("works with custom matcher for object state", () => {
     type StateObj = { status: string };
     class ObjectStateEmitter extends events.EventEmitter {
