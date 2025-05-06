@@ -1,5 +1,7 @@
 # emitter-wrapper
 
+[![CI](https://github.com/vojtaTranta/emitter-wrapper/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/vojtaTranta/emitter-wrapper/actions/workflows/main.yml)
+
 **A robust utility for handling event-driven state and callback chains with Node.js EventEmitters.**
 
 - **TypeScript-first**: Full type safety and typings.
