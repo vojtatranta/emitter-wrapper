@@ -104,6 +104,38 @@ emitter.setState("done");
 
 ---
 
+## 🧹 Cleanup and Destruction
+
+EmitterWrapper provides methods to clean up event listeners to prevent memory leaks:
+
+### Manual Destruction
+
+```ts
+// Remove all listeners from both the wrapper and original emitter
+wrapper.destroy();
+```
+
+### Conditional Destruction
+
+```ts
+// Destroy the wrapper when a specific state is reached
+wrapper.destroyInState("completed");
+```
+
+### Automatic Cleanup with Promises
+
+The `promised` method automatically cleans up listeners after resolution:
+
+```ts
+// Listeners are automatically removed when the promise resolves
+const result = await wrapper.promised("ready");
+// No need to manually call destroy() here
+```
+
+This automatic cleanup helps prevent memory leaks in long-running applications.
+
+---
+
 ## 📦 Module Support
 
 - **ESM**: `import { EmitterWrapper } from 'emitter-wrapper'`
