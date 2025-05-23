@@ -5,11 +5,14 @@ export interface IEventEmitter<S = any> {
   on(event: string, listener: (...args: any[]) => void): void;
   off(event: string, listener: (...args: any[]) => void): void;
   getState(): S;
+  removeAllListeners(): void;
 }
+
 
 export interface IInternalEventEmitter extends IEventEmitter {
   afterAny(listener: (...args: any[]) => void): void;
   ofAfterAny(listener: (...args: any[]) => void): void;
+  destroy(): void;
 }
 
 const ANY_EVENT = "InternalEventEmitter:ANY" as const;
@@ -41,6 +44,12 @@ export class InternalEventEmitter<S = any>
 
   getState(): S {
     return this.emitter.getState() as S;
+  }
+
+  destroy() {
+    this.removeAllListeners();
+    this.emitter.removeAllListeners();
+    return this
   }
 }
 
@@ -116,7 +125,7 @@ export class EmitterWrapper<E extends IEventEmitter> {
         })
       : null;
 
-    return Promise.race<E>([
+    const promiseRace = Promise.race<E>([
       new Promise((resolve) => {
         this.inState(state, (_, emitter) => {
           abort.abort();
@@ -125,5 +134,23 @@ export class EmitterWrapper<E extends IEventEmitter> {
       }),
       ...(timeoutPromise ? [timeoutPromise] : []),
     ]);
+
+    promiseRace.finally(() => {
+      this.destroy();
+    });
+
+    return promiseRace
+  }
+
+  destroy() {
+    this.emitter.destroy();
+    this.originalEmitter.removeAllListeners();
+    return this;
+  }
+
+  destroyInState(state: ReturnType<E["getState"]>) {
+    return this.inState(state, () => {
+      this.destroy();
+    });
   }
 }
