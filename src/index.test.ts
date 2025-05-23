@@ -175,4 +175,174 @@ describe("EmitterWrapper type behavior", () => {
     emitter.setState({ status: "ready" });
     expect(called).toBe(true);
   });
+
+  it("destroy method removes all listeners from emitter and original emitter", () => {
+    class MyEmitter extends events.EventEmitter {
+      private _state = "idle";
+      getState() {
+        return this._state;
+      }
+      setState(newState: string) {
+        this._state = newState;
+        this.emit("stateChange");
+      }
+      removeAllListeners() {
+        super.removeAllListeners();
+        return this;
+      }
+    }
+    
+    const emitter = new MyEmitter();
+    const wrapper = EmitterWrapper.wrap(emitter);
+    
+    // Set up a listener on the wrapper
+    let callCount = 0;
+    wrapper.inState("ready", () => {
+      callCount++;
+    });
+    
+    // Set up a direct listener on the original emitter
+    let originalEmitterCallCount = 0;
+    emitter.on("directEvent", () => {
+      originalEmitterCallCount++;
+    });
+    
+    // Verify wrapper listener works
+    emitter.setState("ready");
+    expect(callCount).toBe(1);
+    
+    // Verify original emitter listener works
+    emitter.emit("directEvent");
+    expect(originalEmitterCallCount).toBe(1);
+    
+    // Spy on the removeAllListeners method of the original emitter
+    const originalRemoveAllListeners = emitter.removeAllListeners;
+    let removeAllListenersCalled = false;
+    emitter.removeAllListeners = function() {
+      removeAllListenersCalled = true;
+      return originalRemoveAllListeners.call(this);
+    };
+    
+    // Destroy should remove all listeners
+    wrapper.destroy();
+    
+    // Verify removeAllListeners was called on the original emitter
+    expect(removeAllListenersCalled).toBe(true);
+    
+    // State change should no longer trigger wrapper callback
+    emitter.setState("idle");
+    emitter.setState("ready");
+    expect(callCount).toBe(1); // Still 1, not incremented
+    
+    // Direct event should no longer trigger original emitter callback
+    emitter.emit("directEvent");
+    expect(originalEmitterCallCount).toBe(1); // Still 1, not incremented
+  });
+  
+  it("destroyInState removes listeners when state is reached", () => {
+    class MyEmitter extends events.EventEmitter {
+      private _state = "idle";
+      getState() {
+        return this._state;
+      }
+      setState(newState: string) {
+        this._state = newState;
+        this.emit("stateChange");
+      }
+      removeAllListeners() {
+        super.removeAllListeners();
+        return this;
+      }
+    }
+    
+    const emitter = new MyEmitter();
+    const wrapper = EmitterWrapper.wrap(emitter);
+    
+    // Set up a test listener to verify destruction
+    let destroyCalled = false;
+    wrapper.inState("final", () => {
+      destroyCalled = true;
+    });
+    
+    // Set up destroyInState for "ready" state
+    let destroyInStateCalled = false;
+    wrapper.destroyInState("ready");
+    
+    // Initially the destroyInState callback shouldn't be called
+    expect(destroyInStateCalled).toBe(false);
+    
+    // Mock the destroy method to verify it gets called
+    const originalDestroy = wrapper.destroy;
+    wrapper.destroy = function() {
+      destroyInStateCalled = true;
+      return originalDestroy.call(this);
+    };
+    
+    // Change to ready state - this should trigger destroyInState
+    emitter.setState("ready");
+    expect(destroyInStateCalled).toBe(true);
+    
+    // Verify that listeners were removed
+    emitter.setState("final");
+    expect(destroyCalled).toBe(false); // Should not be called as listeners were removed
+  });
+  
+  it("promised method automatically cleans up listeners after resolution", async () => {
+    class MyEmitter extends events.EventEmitter {
+      private _state = "idle";
+      getState() {
+        return this._state;
+      }
+      setState(newState: string) {
+        this._state = newState;
+        this.emit("stateChange");
+      }
+      removeAllListeners() {
+        super.removeAllListeners();
+        return this;
+      }
+    }
+    
+    const emitter = new MyEmitter();
+    const wrapper = EmitterWrapper.wrap(emitter);
+    
+    // Set up a spy to track if destroy is called
+    const originalDestroy = wrapper.destroy;
+    let destroyCalled = false;
+    wrapper.destroy = function() {
+      destroyCalled = true;
+      return originalDestroy.call(this);
+    };
+    
+    // Set up a test listener before using promised
+    let beforePromiseListenerCalled = false;
+    wrapper.inState("final", () => {
+      beforePromiseListenerCalled = true;
+    });
+    
+    // Use promised to wait for a state change
+    setTimeout(() => emitter.setState("ready"), 10);
+    await wrapper.promised("ready");
+    
+    // Verify destroy was called
+    expect(destroyCalled).toBe(true);
+    
+    // This shouldn't trigger the listener since destroy was called
+    emitter.setState("final");
+    expect(beforePromiseListenerCalled).toBe(false);
+    
+    // Create a new wrapper to verify that listeners set after destroy won't work
+    const newWrapper = EmitterWrapper.wrap(emitter);
+    let afterDestroyListenerCalled = false;
+    
+    // This listener is set after destroy was called on the original wrapper
+    // It should still work since it's a new wrapper
+    newWrapper.inState("final", () => {
+      afterDestroyListenerCalled = true;
+    });
+    
+    emitter.setState("idle"); // reset state
+    emitter.setState("final"); // should trigger the new listener
+    expect(afterDestroyListenerCalled).toBe(true);
+  });
 });
